@@ -131,6 +131,73 @@ function Open-GrabResult([string]$Folder, [string[]]$Files) {
     }
 }
 
+function ConvertTo-GrabFilename([string]$Text) {
+    $name = $Text.Trim()
+    # Drop an extension typed out of habit; yt-dlp adds the real one.
+    $name = $name -replace '\.(mp4|mkv|webm|mov|mp3|m4a|opus|ogg|wav|flac|srt|vtt|jpe?g|png|webp)$', ''
+    # Characters Windows doesn't allow in filenames.
+    $name = $name -replace '[<>:"/\\|?*\x00-\x1F]', '_'
+    # Windows also rejects trailing dots/spaces and reserved device names.
+    $name = $name -replace '[. ]+$', ''
+    if ($name.Length -gt 200) { $name = $name.Substring(0, 200) -replace '[. ]+$', '' }
+    if ($name -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$') { $name = "_$name" }
+    $name
+}
+
+function Format-GrabSuggestion([string]$Text, [int]$Max = 60) {
+    # Display only: long X/Twitter post text would otherwise flood the prompt.
+    $flat = ($Text -replace '\s+', ' ').Trim()
+    if ($flat.Length -le $Max) { return $flat }
+    $cut = $Max - 3
+    if ([char]::IsHighSurrogate($flat[$cut - 1])) { $cut-- }   # don't split an emoji
+    $flat.Substring(0, $cut) + '...'
+}
+
+# Asks for a filename before downloading. Pressing Enter returns $Arguments
+# untouched, so the default name is exactly what it would have been anyway;
+# a typed name replaces the -o template with "<name>.%(ext)s".
+function Read-GrabFilename([string]$Url, [string[]]$Arguments, [string[]]$CookieArgs) {
+    $outIndex = [array]::IndexOf($Arguments, '-o')
+    if ($outIndex -lt 0) { return $Arguments }
+
+    # Ask yt-dlp what it would name the file, using the same options.
+    # Written to a file rather than captured, so non-ASCII titles survive.
+    Write-Host ""
+    Write-Host "  Looking up title..." -ForegroundColor DarkGray
+    $nameFile = [IO.Path]::GetTempFileName()
+    $lookupArgs = @('--simulate', '--quiet', '--no-warnings', '-I', '1:2',
+                    '--print-to-file', 'filename', $nameFile) + $CookieArgs + $Arguments + @('--', $Url)
+    & yt-dlp @lookupArgs 2>$null | Out-Null
+    $names = @(Get-Content -LiteralPath $nameFile -Encoding UTF8 -ErrorAction SilentlyContinue |
+               Where-Object { $_ })
+    Remove-Item -LiteralPath $nameFile -ErrorAction SilentlyContinue
+
+    if ($names.Count -gt 1) {
+        # A playlist or multi-video post: one custom name can't fit them all.
+        Write-Host "  Several videos at this URL; keeping the default filenames." -ForegroundColor DarkGray
+        return $Arguments
+    }
+
+    $suggestion = 'default name'
+    if ($names.Count -eq 1) {
+        $suggestion = Format-GrabSuggestion ([IO.Path]::GetFileNameWithoutExtension($names[0]))
+    }
+
+    $typed = Read-Host "  Filename [$suggestion]"
+    if ([string]::IsNullOrWhiteSpace($typed)) { return $Arguments }
+
+    $name = ConvertTo-GrabFilename $typed
+    if (-not $name) {
+        Write-Host "  That name has no usable characters; keeping the default." -ForegroundColor DarkYellow
+        return $Arguments
+    }
+
+    [string[]]$custom = $Arguments.Clone()
+    # % starts a yt-dlp template field; %% is a literal percent sign.
+    $custom[$outIndex + 1] = ($name -replace '%', '%%') + '.%(ext)s'
+    $custom
+}
+
 # Runs yt-dlp with the shared options (download folder, cookies, file tracking)
 # and reports success/failure.
 #
@@ -147,14 +214,19 @@ function Invoke-GrabDownload {
 
     New-Item -ItemType Directory -Force -Path $Folder | Out-Null
 
+    $cookieArgs = @()
+    if ($Settings.CookieBrowser) {
+        $cookieArgs = @('--cookies-from-browser', $Settings.CookieBrowser)
+    }
+
+    $Arguments = Read-GrabFilename $Url $Arguments $cookieArgs
+
     # yt-dlp appends each finished file's final path here, so we can
     # highlight it in Explorer afterwards without parsing its output.
     $printFile = [IO.Path]::GetTempFileName()
 
     $ytArgs = @('-P', $Folder, '--print-to-file', 'after_move:filepath', $printFile)
-    if ($Settings.CookieBrowser) {
-        $ytArgs += @('--cookies-from-browser', $Settings.CookieBrowser)
-    }
+    $ytArgs += $cookieArgs
     $ytArgs += $Arguments
     $ytArgs += @('--', $Url)
 

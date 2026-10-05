@@ -19,6 +19,10 @@ Open a new terminal. If `$PROFILE` doesn't exist yet, first run
 Copy a link, then type `grab`. The URL on your clipboard is picked up
 automatically (press Enter to accept it). `grab <url>` also works.
 
+Before each download you're asked for a filename, with the default shown in
+brackets. Press Enter to keep it, or type a name without an extension (yt-dlp
+adds `.mp4`, `.mp3`, etc.).
+
 After each download you land back on the menu with the same URL, so you can
 grab the video, then the MP3, then the thumbnail. If you copy a new link while
 the menu is open, a `[N] Use new clipboard URL` option shows up.
