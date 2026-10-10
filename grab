@@ -1,0 +1,20 @@
+#!/bin/sh
+# grab for macOS Terminal (zsh or bash). Runs the shared PowerShell module,
+# so behavior matches `grab` inside PowerShell on Windows exactly.
+# Setup: see README.md (needs PowerShell 7: brew install --cask powershell).
+
+# Find the folder this script really lives in, even through a symlink.
+src=$0
+while [ -h "$src" ]; do
+  dir=$(cd -P "$(dirname "$src")" && pwd)
+  src=$(readlink "$src")
+  case $src in /*) ;; *) src=$dir/$src ;; esac
+done
+dir=$(cd -P "$(dirname "$src")" && pwd)
+
+if ! command -v pwsh >/dev/null 2>&1; then
+  echo "grab needs PowerShell 7. Install it with:  brew install --cask powershell" >&2
+  exit 1
+fi
+
+exec pwsh -NoLogo -NoProfile -File "$dir/grab.ps1" "$@"
