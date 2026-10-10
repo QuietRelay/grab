@@ -10,6 +10,8 @@ same module, so you can use it straight from Terminal/zsh.
 | `grab` | macOS | Terminal launcher (runs `grab.ps1` with `pwsh`) |
 | `grab.ps1` | macOS | loads the module and passes your arguments to it |
 
+Tested on Windows 11. macOS is not tested yet; see [TESTING.md](TESTING.md).
+
 ## Install on Windows 11 (PowerShell)
 
 ```powershell
