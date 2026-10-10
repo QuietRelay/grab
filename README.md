@@ -17,7 +17,7 @@ winget install yt-dlp.yt-dlp
 winget install Gyan.FFmpeg          # needed for MP4 merging, MP3/M4A, clips and inspect's resolution check
 
 New-Item -ItemType Directory -Force "$HOME\Tools\Grab" | Out-Null
-Invoke-WebRequest "https://raw.githubusercontent.com/QuietRelay/sunset-ledger/grab-media-tool/tools/grab/Grab.psm1" -OutFile "$HOME\Tools\Grab\Grab.psm1"
+Invoke-WebRequest "https://raw.githubusercontent.com/QuietRelay/grab/main/Grab.psm1" -OutFile "$HOME\Tools\Grab\Grab.psm1"
 Unblock-File "$HOME\Tools\Grab\Grab.psm1"
 Add-Content $PROFILE 'Import-Module "$HOME\Tools\Grab\Grab.psm1"'
 ```
@@ -34,7 +34,7 @@ brew install yt-dlp ffmpeg
 
 mkdir -p ~/Tools/Grab && cd ~/Tools/Grab
 for f in Grab.psm1 grab grab.ps1; do
-  curl -fsSLO "https://raw.githubusercontent.com/QuietRelay/sunset-ledger/grab-media-tool/tools/grab/$f"
+  curl -fsSLO "https://raw.githubusercontent.com/QuietRelay/grab/main/$f"
 done
 chmod +x grab
 echo "alias grab='noglob ~/Tools/Grab/grab'" >> ~/.zshrc
